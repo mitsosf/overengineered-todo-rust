@@ -50,7 +50,7 @@ async fn main() -> anyhow::Result<()> {
         task::spawn(async move {
             let msg: TaskMsg = serde_json::from_slice(&delivery.data).unwrap();
             let res = match msg.operation.as_str() {
-                "create" => jobs::handle_create(&db, msg.job_id, msg.title.clone().unwrap()).await,
+                "create" => jobs::handle_create(&db, msg.job_id, msg.todo_id.unwrap(), msg.title.clone().unwrap()).await,
                 "delete" => jobs::handle_delete(&db, msg.job_id, msg.todo_id.unwrap()).await,
                 "toggle" => jobs::handle_toggle(&db, msg.job_id, msg.todo_id.unwrap()).await,
                 _        => Err(anyhow::anyhow!("unknown op")),

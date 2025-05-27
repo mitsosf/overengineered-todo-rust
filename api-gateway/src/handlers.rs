@@ -1,6 +1,6 @@
 use actix_web::{get, post, delete, web, HttpResponse, Error};
 use actix_web::error::{ErrorInternalServerError, ErrorNotFound};
-use sqlx::{FromRow, PgPool};
+use sqlx::{Executor, FromRow, PgPool};
 use lapin::Channel;
 use uuid::Uuid;
 use serde::{Deserialize, Serialize};
@@ -67,12 +67,25 @@ struct CreatePayload { title: String }
 
 #[post("/todos")]
 async fn create(
+    db: web::Data<PgPool>,
     mq: web::Data<Channel>,
     payload: web::Json<CreatePayload>,
 ) -> anyhow::Result<HttpResponse, Error> {
     let job_id = Uuid::new_v4();
+    let todo_id = Uuid::new_v4();
+    let mut tx1 = db.get_ref().begin().await.map_err(ErrorInternalServerError)?;
+    tx1.execute(
+        sqlx::query(
+            "INSERT INTO jobs (id, todo_id, operation, status) VALUES ($1, $2, 'toggle', 'pending')"
+        )
+            .bind(job_id)
+            .bind(todo_id)
+    ).await.map_err(ErrorInternalServerError)?;
+    tx1.commit().await.map_err(ErrorInternalServerError)?;
+
     let msg = serde_json::json!({
         "job_id": job_id,
+        "todo_id": todo_id,
         "operation": "create",
         "title": payload.title,
     });
@@ -86,12 +99,22 @@ async fn create(
 
 #[post("/todos/{id}/toggle")]
 async fn toggle(
+    db: web::Data<PgPool>,
     mq: web::Data<Channel>,
     path: web::Path<Uuid>,
 ) -> Result<HttpResponse, Error> {
     let todo_id = path.into_inner();
-
     let job_id = Uuid::new_v4();
+    let mut tx = db.get_ref().begin().await.map_err(ErrorInternalServerError)?;
+    tx.execute(
+        sqlx::query(
+            "INSERT INTO jobs (id, todo_id, operation, status) VALUES ($1, $2, 'toggle', 'pending')"
+        )
+            .bind(job_id)
+            .bind(todo_id)
+    ).await.map_err(ErrorInternalServerError)?;
+    tx.commit().await.map_err(ErrorInternalServerError)?;
+    
     let msg = serde_json::json!({
         "job_id": job_id,
         "operation": "toggle",
@@ -109,14 +132,28 @@ async fn toggle(
 
 #[delete("/todos/{id}")]
 async fn delete(
+    db: web::Data<PgPool>,
     mq: web::Data<Channel>,
     path: web::Path<Uuid>,
 ) -> anyhow::Result<HttpResponse, Error> {
     let job_id = Uuid::new_v4();
+    let todo_id = path.into_inner();
+    let mut tx = db.get_ref().begin().await.map_err(ErrorInternalServerError)?;
+    
+    tx.execute(
+        sqlx::query(
+            "INSERT INTO jobs (id, todo_id, operation, status) VALUES ($1, $2, 'delete', 'pending')"
+        )
+            .bind(job_id)
+            .bind(todo_id)
+    ).await.map_err(ErrorInternalServerError)?;
+    
+    tx.commit().await.map_err(ErrorInternalServerError)?;
+    
     let msg = serde_json::json!({
         "job_id": job_id,
         "operation": "delete",
-        "todo_id": path.into_inner(),
+        "todo_id": todo_id,
     });
     mq.basic_publish(
         "", "todo_tasks", Default::default(),
@@ -136,7 +173,7 @@ async fn job_status(db: web::Data<PgPool>, path: web::Path<Uuid>) -> anyhow::Res
         .fetch_one(db.get_ref())
         .await
         .map_err(|_| ErrorNotFound("Not found"))?;
-    
+
     Ok(HttpResponse::Ok().json(rec))
 }
 
