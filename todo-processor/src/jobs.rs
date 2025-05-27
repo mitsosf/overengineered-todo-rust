@@ -5,7 +5,6 @@ pub async fn handle_create(db: &PgPool, job_id: Uuid, title: String) -> anyhow::
     println!("Processing create job: {}", job_id);
     let todo_id = Uuid::new_v4();
 
-    // begin() gives you an owned Transaction<_, Postgres>
     let mut tx: Transaction<'_, _> = db.begin().await?;
 
     tx.execute(
@@ -50,6 +49,51 @@ pub async fn handle_delete(db: &PgPool, job_id: Uuid, todo_id: Uuid) -> anyhow::
     )
         .await?;
 
+    tx.commit().await?;
+    Ok(())
+}
+
+pub async fn handle_toggle(
+    db: &PgPool,
+    job_id: Uuid,
+    todo_id: Uuid,
+) -> anyhow::Result<()> {
+    println!("Processing toggle job: {}", job_id);
+    
+    let mut tx1 = db.begin().await?;
+    tx1.execute(
+        sqlx::query!(
+                "INSERT INTO jobs (id, todo_id, operation, status) VALUES ($1, $2, 'toggle', 'pending')",
+                 job_id, 
+                todo_id
+            )
+        ).await?;
+    tx1.commit().await?;
+    
+    let mut tx = db.begin().await?;
+    
+    let result = tx
+        .execute(
+            sqlx::query!(
+                "UPDATE todos 
+                 SET completed = NOT completed 
+                 WHERE id = $1",
+                todo_id
+            )
+        )
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(anyhow::anyhow!("Todo {} not found", todo_id));
+    }
+    
+    tx.execute(
+        sqlx::query!(
+            "UPDATE jobs SET status = 'completed' WHERE id = $1",
+            job_id
+        )
+    )
+        .await?;
     tx.commit().await?;
     Ok(())
 }

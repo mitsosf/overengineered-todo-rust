@@ -85,6 +85,29 @@ async fn create(
     Ok(HttpResponse::Accepted().json(JobStatus { id: job_id, status: "pending".into() }))
 }
 
+#[post("/todos/{id}/toggle")]
+async fn toggle(
+    mq: web::Data<Channel>,
+    path: web::Path<Uuid>,
+) -> Result<HttpResponse, Error> {
+    let todo_id = path.into_inner();
+
+    let job_id = Uuid::new_v4();
+    let msg = serde_json::json!({
+        "job_id": job_id,
+        "operation": "toggle",
+        "todo_id": todo_id,
+    });
+    mq.basic_publish(
+        "", "todo_tasks", Default::default(),
+        &*serde_json::to_vec(&msg)?, Default::default()
+    )
+        .await
+        .map_err(ErrorInternalServerError)?;
+
+    Ok(HttpResponse::Accepted().json(JobStatus { id: job_id, status: "pending".into() }))
+}
+
 #[delete("/todos/{id}")]
 async fn delete(
     mq: web::Data<Channel>,
@@ -122,6 +145,7 @@ pub fn init_routes(cfg: &mut web::ServiceConfig) {
     cfg.service(list)
         .service(get_by_id)
         .service(create)
+        .service(toggle)
         .service(delete)
         .service(job_status);
 }
