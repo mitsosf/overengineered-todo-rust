@@ -7,5 +7,6 @@ pub async fn init_db() -> anyhow::Result<PgPool> {
         .max_connections(5)
         .connect(&url)
         .await?;
+    println!("Connected to DB");
     Ok(pool)
 }

@@ -7,5 +7,6 @@ pub async fn init_rabbit() -> anyhow::Result<Channel> {
     let channel = conn.create_channel().await?;
     // ensure our queue exists
     channel.queue_declare("todo_tasks", Default::default(), Default::default()).await?;
+    println!("Connected to RabbitMQ");
     Ok(channel)
 }
