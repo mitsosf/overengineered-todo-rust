@@ -1,0 +1,60 @@
+networks:
+  internal:
+    driver: bridge
+#    internal: true
+
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: todo
+      POSTGRES_PASSWORD: todo
+      POSTGRES_DB: todo_db
+    volumes:
+      - pgdata_todos:/var/lib/postgresql/data
+    networks:
+      - internal
+    ports:
+      - "127.0.0.1:5555:5432"
+
+  rabbitmq:
+    image: 'bitnami/rabbitmq:latest'
+    restart: always
+    ports:
+      - "127.0.0.1:15672:15672"
+    environment:
+      - RABBITMQ_MANAGEMENT_BIND_IP=0.0.0.0
+      - RABBITMQ_MANAGEMENT_PORT_NUMBER=15672
+      - RABBITMQ_MANAGEMENT_ALLOW_WEB_ACCESS=true
+      - RABBITMQ_USERNAME=rabbitmq
+      - RABBITMQ_PASSWORD=rabbitmq
+    networks:
+      - internal
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - "8080:8080"
+    networks:
+      - internal
+
+  todo-processor:
+    build:
+      context: ./todo-processor
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - rabbitmq
+    networks:
+      - internal
+
+volumes:
+  pgdata_todos:
