@@ -23,6 +23,7 @@ services:
     restart: always
     ports:
       - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5672:5672"
     environment:
       - RABBITMQ_MANAGEMENT_BIND_IP=0.0.0.0
       - RABBITMQ_MANAGEMENT_PORT_NUMBER=15672
