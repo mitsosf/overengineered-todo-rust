@@ -3,6 +3,8 @@ mod db;
 mod handlers;
 mod mq;
 use dotenv::dotenv;
+use actix_cors::Cors;
+use actix_web::http::header;
 
 #[actix_web::main]
 async fn main() -> anyhow::Result<()> {
@@ -11,7 +13,15 @@ async fn main() -> anyhow::Result<()> {
     let mq_channel = mq::init_rabbit().await?;
 
     HttpServer::new(move || {
+        // configure CORS to allow only specific origins
+        let cors = Cors::default()
+            .allowed_origin("https://todo-be.frangiadakis.com")
+            .allowed_origin("http://localhost:5173")
+            .allowed_methods(vec!["GET", "POST", "DELETE", "PATCH"])
+            .allowed_headers(vec![header::CONTENT_TYPE, header::AUTHORIZATION])
+            .max_age(3600);
         App::new()
+            .wrap(cors)
             .app_data(web::Data::new(db_pool.clone()))
             .app_data(web::Data::new(mq_channel.clone()))
             .configure(handlers::init_routes)
