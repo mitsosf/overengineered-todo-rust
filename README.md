@@ -1,11 +1,15 @@
-# Overengineered Rust TODO API 🦀🚀
+# Overengineered Rust TODO API 🦀
 
 > **Warning:** Dangerously overengineered.
 
-This repo is a playground in overengineering: two separate Rust services communicating over RabbitMQ, all choreographed with Docker Compose.
+This repo is a playground in overengineering: two separate Rust services communicating over RabbitMQ, managed with Docker Compose.
 
-Yes, it’s all completely unnecessary for a simple TODO app. But hey, it looks cool on your resume!
+Each "time-consuming" operation (create, delete, toggle) is handled by a background worker. The API Gateway service handles HTTP requests and enqueues jobs for the worker service to process.
 
+Yes, it’s all completely unnecessary for a simple TODO app. But it's a great showcase of an async event-driven system architecture in Rust.
+
+#### Demo:
+>[https://overengineered-todos.frangiadakis.com](https://overengineered-todos.frangiadakis.com)
 ---
 
 ## 📂 Project Structure
@@ -15,7 +19,8 @@ Yes, it’s all completely unnecessary for a simple TODO app. But hey, it looks 
 ├── .env                   # DB & RabbitMQ URLs
 ├── migrations/            # SQLx migrations (CREATE tables)
 ├── api-gateway/           # Gateway service
-└── todo-processor/        # Background worker service
+├── todo-processor/        # Background worker service
+└── ui/                    # A very simple React UI (optional)
 
 ```
 
@@ -44,6 +49,7 @@ This brings up:
 * **RabbitMQ**
 * **api-gateway** on `localhost:8080`
 * **todo-processor** as a hidden worker container
+* **UI** on `localhost:6967` (optional)
 
 ### 3. Run migrations
 
@@ -66,7 +72,7 @@ sqlx migrate run
 | GET    | `/todos/{id}`            | Fetch one TODO by ID                              |
 | POST   | `/todos`                 | Create a TODO (enqueue job)                       |
 | DELETE | `/todos/{id}`            | Delete a TODO (enqueue job)                       |
-| POST   | `/todos/{id}/toggle`     | Flip `completed` status (enqueue)                 |
+| POST   | `/todos/{id}/toggle`     | Flip `completed` status (enqueue job)             |
 | GET    | `/jobs/{job_id}`         | Check job status (`pending`/`completed`/`failed`) |
 
 ### Polling Example (JS)
@@ -108,6 +114,5 @@ async function pollJob(id) {
 ## 👋 License & Credits
 
 * Feel free to copy, adapt, or shamelessly plagiarize. This is a portfolio toy, not production code.
-* Inspired by the urge to overcomplicate trivial tasks.
 
-Happy coding—and remember: why keep it simple, stupid? 🦀🚀
+Always remember - in real world scenarios: Keep It Simple, Stupid 🦀🚀

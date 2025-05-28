@@ -15,8 +15,9 @@ async fn main() -> anyhow::Result<()> {
     HttpServer::new(move || {
         // configure CORS to allow only specific origins
         let cors = Cors::default()
-            .allowed_origin("https://todo-be.frangiadakis.com")
+            .allowed_origin("https://overengineered-todos.frangiadakis.com")
             .allowed_origin("http://localhost:5173")
+            .allowed_origin("http://localhost:6967")
             .allowed_methods(vec!["GET", "POST", "DELETE", "PATCH"])
             .allowed_headers(vec![header::CONTENT_TYPE, header::AUTHORIZATION])
             .max_age(3600);

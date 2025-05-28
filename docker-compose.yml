@@ -54,6 +54,18 @@ services:
       - internal
     restart: always
 
+  ui:
+    build:
+      context: ./ui
+      args:
+        VITE_API_URL: https://todo-be.frangiadakis.com
+    ports:
+      - "6967:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - internal
+
 volumes:
   pgdata_todos:
 
